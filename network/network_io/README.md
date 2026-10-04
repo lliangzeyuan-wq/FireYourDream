@@ -1,3 +1,15 @@
 # 介绍
 
 - 这个代码 : 一个网络连接 ， 一个线程 ，和apache一样的, 无法解决C10K问题 ， 因此引出了下面的IO多路复用。代码很经典。
+
+
+## 编译
+```bash
+gcc -o multi-io multi-io.c -lpthread
+```
+
+## 运行
+```bash
+./multi.io
+```
+
