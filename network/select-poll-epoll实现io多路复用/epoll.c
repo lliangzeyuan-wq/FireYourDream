@@ -191,7 +191,7 @@ int main()
                     FD_CLR(i, &rfds);
 
 
-                    break;
+                    continue;
                 }
 
                 send(i, buffer, count, 0);
@@ -261,7 +261,7 @@ int main()
 
                     fds[i].fd = -1;
                     fds[i].events = 0;
-                    break;
+                    continue;
                 }
 
                 send(i, buffer, count, 0);
@@ -332,7 +332,7 @@ int main()
 
                     epoll_ctl(epfd , EPOLL_CTL_DEL , connfd , NULL);
                     close(connfd);
-                    break;
+                    continue;
                 }
 
                 send(connfd, buffer, count, 0);

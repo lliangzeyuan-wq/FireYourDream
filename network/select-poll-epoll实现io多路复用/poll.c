@@ -190,7 +190,7 @@ int main()
                     FD_CLR(i , &rfds);
 
 
-                    break;
+                    continue;
                 }
 
                 send(i, buffer, count, 0);
