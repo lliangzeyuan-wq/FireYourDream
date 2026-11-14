@@ -11,10 +11,10 @@
 (fio 是一个工具，需要先安装)
   
 
-### vio_iouring.c
+### uring_tcp_server.c
 - 介绍：本代码是用liburing库提供的接口编写的TCP服务端demo（liburing是有在io_uring提供的接口上编写的一个应用层的库）
-- 编译 ： gcc vio_iouring.c -o vio_iouring -luring
+- 编译 ： gcc uring_tcp_server.c -o uring_tcp_server  -luring
 
-- 运行： ./vio_iouring
+- 运行： ./uring_tcp_server
 
 - 测试： 用网络连接工具连接9999这个端口，发送信息，服务端会打印客户端发送的信息
