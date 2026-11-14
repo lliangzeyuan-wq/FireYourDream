@@ -1,0 +1,18 @@
+
+[global]
+thread=1
+group_reporting=1
+direct=1
+verify=0
+time_based=1
+runtime=10
+bs=16K
+size=16384
+iodepth=64
+rw=randwrite
+filename=kingfs
+ioengine=libaio
+
+[test]
+stonewall
+description="variable bs"
