@@ -108,7 +108,7 @@ int main(){
     }
 
 
-    listen(listenfd, 10);
+    listen(listenfd, 1024);
 
     //定义一个参数结构体
     struct io_uring_params params;
@@ -147,9 +147,15 @@ int main(){
             struct conninfo ci;
             memcpy(&ci, &cqe->user_data, sizeof(ci));
 
-            if(ci.type == ACCEPT){
+            if(ci.type == ACCEPT){
                 int connfd = cqe->res;
-                set_read_event(&ring, connfd, buffer, 1024, 0);
+                if (connfd < 0) {
+                    printf("accept failed: %d\n", connfd);
+                } else {
+                    set_read_event(&ring, connfd, buffer, 1024, 0);
+                }
+                // 关键：每接受一个连接，必须再挂一个 accept，否则只能接第一个
+                set_accept_event(&ring, listenfd, (struct sockaddr*)&clientaddr, &clilen, 0);
             }else if(ci.type == READ){
                 
                 //这里是READ， 因此cqe->res就是读到的字节数
