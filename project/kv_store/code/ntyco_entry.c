@@ -148,9 +148,9 @@ void server(void *arg) {
 			gettimeofday(&tv_begin, NULL);
 			int time_used = TIME_SUB_MS(tv_begin, tv_cur);
 			
-			printf("client fd : %d, time_used: %d\n", cli_fd, time_used);
+
 		}
-		printf("new client comming\n");
+
 
 		nty_coroutine *read_co;
 		int *arg = malloc(sizeof(int));
@@ -181,6 +181,8 @@ int main(int argc, char *argv[]) {
 
 #else
 
+
+// port : 9096
 int ntyco_entry(void) {
 	nty_coroutine *co = NULL;
 

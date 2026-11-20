@@ -1,18 +1,29 @@
-
-
 #ifndef __KVSTORE_H__
 #define __KVSTORE_H__
 
 
+
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+#include <getopt.h>
+#include <sys/socket.h>
 #include<stdlib.h>
 
 
-#define BUFFER_LENGTH           1024
+#define BUFFER_LENGTH           512
+
+#define ENABLE_LOG      0
+#if ENABLE_LOG
+#define LOG(_fmt, ...) fprintf(stdout, "[%s:%d]: "_fmt, __FILE__, __LINE__,##__VA_ARGS__)
+#else
+#define LOG(_fmt, ...) do{}while(0)
+#endif
+
 
 typedef int(*RCALLBACK)(int fd);
 
-
-
+ 
 // conn , fd , buffer , callback
 struct conn_item
 {
@@ -53,7 +64,7 @@ void kvstore_free(void *ptr);
 
 
 #define ENABLE_ARRAY_KVENGINE   1
-#define ENABLE_NETWORK_SELECT   NETWORK_EPOLL  
+#define ENABLE_NETWORK_SELECT   NETWORK_EPOLL
 
 
 #if ENABLE_ARRAY_KVENGINE
@@ -66,6 +77,8 @@ struct kvs_array_item{
 
 int kvstore_array_set(char *key , char *value);
 char * kvstore_array_get(char * key);
+int kvstore_array_delete(char * key);
+int kvstore_array_modify(char *key, char *value);
 
 
 

@@ -66,36 +66,66 @@ int kvstore_parser_protocol(struct conn_item *item , char **tokens , int count)
     }
 
     char *msg = item->wbuffer;
+    char *key = NULL;
+    char *value = NULL;
+    if(count >= 2) key = tokens[1];
+    if(count >= 3) value = tokens[2];
     memset(msg, 0, BUFFER_LENGTH);
 
     switch(cmd) 
     {
         case KVS_CMD_SET:
-            int res = kvstore_array_set(tokens[1] , tokens[2]);
+        {
+            int res = kvstore_array_set(key , value);
             if(!res)
             {
-                snprintf(msg, BUFFER_LENGTH, "SUCESS");
+                snprintf(msg, BUFFER_LENGTH, "SUCCESS");
             }else{
                 snprintf(msg, BUFFER_LENGTH, "FAILED");
             }    
-            printf("set: %d\n", res);
+            LOG("set: %d\n", res);
             break;
+        }    
         case KVS_CMD_GET:
-            char * value = kvstore_array_get(tokens[1]); 
-            if(value)
+        {    
+            char * val = kvstore_array_get(key); 
+            if(val)
             {
-                snprintf(msg, BUFFER_LENGTH, "%s", value);
+                snprintf(msg, BUFFER_LENGTH, "%s", val);
             }else{
                 snprintf(msg, BUFFER_LENGTH, "NO EXIST");
             }    
-            printf("get: %s\n", value);
+            LOG("get: %s\n", val);
             break;
+        }    
         case KVS_CMD_DEL:
-            printf("del\n");
+        {
+            LOG("del\n");
+
+            int res = kvstore_array_delete(key);
+            if(res < 0){
+                snprintf(msg, BUFFER_LENGTH,  "ERROR");
+            }else if(res == 0){
+                snprintf(msg, BUFFER_LENGTH, "SUCCESS");
+            }else {
+                snprintf(msg, BUFFER_LENGTH, "NO EXIST");
+            }    
             break;
+        }    
         case KVS_CMD_MOD:
-            printf("mod\n");
+        {
+            LOG("mod\n");
+            
+            int res = kvstore_array_modify(key , value);
+            if(res < 0){
+                snprintf(msg, BUFFER_LENGTH,  "ERROR");
+            }else if(res == 0){
+                snprintf(msg, BUFFER_LENGTH, "SUCCESS");
+            }else {
+                snprintf(msg, BUFFER_LENGTH, "NO EXIST");
+            }  
             break;
+        }    
         default:
         {
             printf("Unknown cmd: %s\n", tokens[0]);
@@ -105,17 +135,19 @@ int kvstore_parser_protocol(struct conn_item *item , char **tokens , int count)
 }
 int kvstore_request(struct conn_item *item)
 {
-    printf("recv: %s\n" , item->rbuffer);
+    //printf("recv: %s\n" , item->rbuffer);
 
     char *msg = item->rbuffer;
     char *tokens[KVSTORE_MAX_TOKENS];
     int count = kvstore_split_token(msg , tokens);
 
+#if 0
     int idx = 0;
     for(idx = 0 ; idx < count ;idx++)
     {
-        printf("idx: %s\n" , tokens[idx]);
+        LOG("idx: %s\n" , tokens[idx]);
     }
+#endif    
 
     kvstore_parser_protocol(item, tokens, count);
 
