@@ -11,7 +11,9 @@
 #define KVSTORE_MAX_TOKENS 128
 
 const char *commands[] = {
-    "SET" , "GET" , "DEL" , "MOD" , 
+    "SET" , "GET" , "DEL" , "MOD" , "COUNT",
+    "RSET", "RGET", "RDEL", "RMOD", 
+"RCOUNT",
 };   
 
 enum 
@@ -22,6 +24,14 @@ enum
     KVS_CMD_DEL,
     KVS_CMD_MOD,
     KVS_CMD_COUNT,
+    
+    KVS_CMD_RSET,
+    KVS_CMD_RGET,
+    KVS_CMD_RDEL,
+    KVS_CMD_RMOD,
+    KVS_CMD_RCOUNT,
+    
+    KVS_CMD_END,
 };    
 
 
@@ -31,6 +41,28 @@ void *kvstore_malloc(size_t size){
 void kvstore_free(void *ptr){
     return free(ptr);
 }
+
+
+
+#if ENABLE_RBTREE_KVENGINE
+int kvstore_rbtree_set(char *key, char *value) {
+    return kvs_rbtree_set(&Tree, key, value);
+}
+char* kvstore_rbtree_get(char *key) {
+    return kvs_rbtree_get(&Tree, key);
+}
+int kvstore_rbtree_delete(char *key) {
+    return kvs_rbtree_delete(&Tree, key);
+}
+int kvstore_rbtree_modify(char *key, char *value) {
+    return kvs_rbtree_modify(&Tree, key, value);
+}
+int kvstore_rbtree_count(void) {
+    return kvs_rbtree_count(&Tree);
+}
+#endif
+
+
 
 
 
@@ -57,7 +89,7 @@ int kvstore_parser_protocol(struct conn_item *item , char **tokens , int count)
 
     int cmd = KVS_CMD_START;
 
-    for(cmd = KVS_CMD_START; cmd < KVS_CMD_COUNT; cmd++)
+    for(cmd = KVS_CMD_START; cmd < KVS_CMD_END; cmd++)
     {
         if(strcmp(commands[cmd], tokens[0]) == 0)
         {
@@ -95,7 +127,8 @@ int kvstore_parser_protocol(struct conn_item *item , char **tokens , int count)
             }else{
                 snprintf(msg, BUFFER_LENGTH, "NO EXIST");
             }    
-            LOG("get: %s\n", val);
+            LOG(
+"get: %s\n", val);
             break;
         }    
         case KVS_CMD_DEL:
@@ -126,6 +159,82 @@ int kvstore_parser_protocol(struct conn_item *item , char **tokens , int count)
             }  
             break;
         }    
+        case KVS_CMD_COUNT: {
+            int count = kvstore_array_count();
+            if (count < 0) { // server
+                snprintf(msg, BUFFER_LENGTH, "%s", "ERROR");
+            } else {
+                snprintf(msg, BUFFER_LENGTH, "%d", count);
+            }
+            break;
+        }
+
+        
+        case KVS_CMD_RSET: {
+            int res = kvstore_rbtree_set(key , value);
+            if(!res)
+            {
+                snprintf(msg, BUFFER_LENGTH, "SUCCESS");
+            }else{
+                snprintf(msg, BUFFER_LENGTH, "FAILED");
+            }    
+            LOG("set: %d\n", res);
+            break;
+
+        }
+        case KVS_CMD_RGET: {
+            char * val = kvstore_rbtree_get(key); 
+            if(val)
+            {
+                snprintf(msg, BUFFER_LENGTH, "%s", val);
+            }else{
+                snprintf(msg, BUFFER_LENGTH, "NO EXIST");
+            }    
+            LOG(
+"get: %s\n", val);
+            break;
+
+        }
+        case KVS_CMD_RDEL: {
+
+            int res = kvstore_rbtree_delete(key);
+            if(res < 0){
+                snprintf(msg, BUFFER_LENGTH,  "ERROR");
+            }else if(res == 0){
+                snprintf(msg, BUFFER_LENGTH, "SUCCESS");
+            }else {
+                snprintf(msg, BUFFER_LENGTH, "NO EXIST");
+            }    
+            break;
+
+        }
+        case KVS_CMD_RMOD: {
+            LOG("mod\n");
+            
+            int res = kvstore_rbtree_modify(key , value);
+            if(res < 0){
+                snprintf(msg, BUFFER_LENGTH,  "ERROR");
+            }else if(res == 0){
+                snprintf(msg, BUFFER_LENGTH, "SUCCESS");
+            }else {
+                snprintf(msg, BUFFER_LENGTH, "NO EXIST");
+            }  
+            break;
+
+        }
+        case KVS_CMD_RCOUNT: {
+            int count = kvstore_rbtree_count();
+            if (count < 0) { // server
+                snprintf(msg, BUFFER_LENGTH, "%s", "ERROR");
+            } else {
+                snprintf(msg, BUFFER_LENGTH, "%d", count);
+            }
+            break;
+        }
+
+
+
+        
         default:
         {
             printf("Unknown cmd: %s\n", tokens[0]);
@@ -145,7 +254,8 @@ int kvstore_request(struct conn_item *item)
     int idx = 0;
     for(idx = 0 ; idx < count ;idx++)
     {
-        LOG("idx: %s\n" , tokens[idx]);
+        LOG(
+"idx: %s\n" , tokens[idx]);
     }
 #endif    
 
@@ -155,13 +265,43 @@ int kvstore_request(struct conn_item *item)
 }
 
 
+int init_kvengine(void) {
+
+#if ENABLE_ARRAY_KVENGINE
+    if (kvstore_array_create() != 0) {
+        printf("kvstore_array_create failed\n");
+        return -1;
+    }
+#endif
+
+#if ENABLE_RBTREE_KVENGINE
+    if (kvstore_rbtree_create(&Tree) != 0) {
+        printf("kvstore_rbtree_create failed\n");
+        return -1;
+    }
+#endif
+
+    return 0;
+}
+
+
+
 int main()
 {
+
+    if (init_kvengine() != 0) {
+        return -1;
+    }
+    
 #if (ENABLE_NETWORK_SELECT == NETWORK_EPOLL)
     epoll_entry();
 #elif (ENABLE_NETWORK_SELECT == NETWORK_NTYCO)
     ntyco_entry();
 #elif (ENABLE_NETWORK_SELECT == NETWORK_IOURING)
 #endif
+
+    /* 正常不会走到这里（网络层是死循环），写上表示资源释放的意图 */
+    kvstore_array_destory();
+    kvstore_rbtree_destory(&Tree);
 }
 

@@ -2,8 +2,46 @@
 
 #include"kvstore.h"
 #include<string.h>
-struct kvs_array_item array_table[KVS_ARRAY_SIZE] = {0};
-int array_idx = 0;
+/* 动态分配的数组表：由 create 分配、destory 释放 */
+static struct kvs_array_item *array_table = NULL;
+static int array_idx = 0;
+
+/* create：分配数组引擎 */
+int kvstore_array_create(void) {
+
+    if (array_table != NULL) return 0;      /* 已经创建过，避免重复分配 */
+
+    array_table = calloc(KVS_ARRAY_SIZE, sizeof(struct kvs_array_item));
+    if (array_table == NULL) return -1;
+
+    array_idx = 0;
+    return 0;
+}
+
+/* destory：释放所有 key/value 以及数组本身 */
+void kvstore_array_destory(void) {
+
+    int i = 0;
+
+    if (array_table == NULL) return;
+
+    for (i = 0; i < array_idx; i ++) {
+        if (array_table[i].key != NULL) {
+            kvstore_free(array_table[i].key);
+            array_table[i].key = NULL;
+        }
+        if (array_table[i].value != NULL) {
+            kvstore_free(array_table[i].value);
+            array_table[i].value = NULL;
+        }
+    }
+
+    kvstore_free(array_table);
+    array_table = NULL;
+    array_idx = 0;
+}
+
+
 
 
 int kvstore_array_set(char *key , char *value)
@@ -15,7 +53,7 @@ int kvstore_array_set(char *key , char *value)
      * 注意：容量检查（array_idx == KVS_ARRAY_SIZE）挪到后面去了，
      *       因为"更新已存在的 key"不需要新槽位，数组满了也应该能更新。
      * ============================================ */
-    if (key == NULL || value == NULL) return -1;
+    if (array_table == NULL || key == NULL || value == NULL) return -1;
 
     /* =================【改动 2】=================
      * 新增：先按 key 查一遍。
@@ -83,11 +121,12 @@ int kvstore_array_set(char *key , char *value)
 char * kvstore_array_get(char * key)
 {
     int i = 0 ;
-    if(key == NULL) return NULL;
+    if(array_table == NULL || key == NULL) return NULL;
     
     for(i=0 ; i < array_idx ; ++i)
     {
-        if(array_table[i].key == NULL){
+        if(array_table[i].key == NULL){
+
             continue;
         }    
         if(strcmp(array_table[i].key , key) == 0)
@@ -103,7 +142,7 @@ int kvstore_array_delete(char * key)
 {
     int i = 0 ;
 
-    if(key == NULL) return -1;
+    if(array_table == NULL || key == NULL) return -1;
 
     for(i=0 ; i < array_idx ; ++i)
     {
@@ -125,7 +164,7 @@ int kvstore_array_delete(char * key)
 
 int kvstore_array_modify(char *key, char *value){
     int i=0;
-    if(key == NULL || value == NULL) return -1;
+    if(array_table == NULL || key == NULL || value == NULL) return -1;
 
     for(i=0; i<array_idx; ++i){
         if(array_table[i].key == NULL) continue;
@@ -142,6 +181,23 @@ int kvstore_array_modify(char *key, char *value){
     }    
 
     return i;
+}
+
+
+
+int kvstore_array_count(void) {
+
+    int i, n = 0;
+
+    if (array_table == NULL) return 0;
+
+    for (i = 0; i < array_idx; i ++) {
+        if (array_table[i].key != NULL) {
+            n ++;
+        }
+    }
+
+    return n;
 }
 
 
